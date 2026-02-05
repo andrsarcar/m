@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Найти карту игра</title>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #0a291f;
+    color: #fff;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    text-align: center;
+    padding: 10px;
+    background: #1e6b4a;
+}
+
+.controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px;
+    background: #154734;
+}
+
+select, button {
+    padding: 8px 15px;
+    font-size: 16px;
+    border: none;
+    border-radius: 5px;
+}
+
+button {
+    background: #2e8b57;
+    color: white;
+    cursor: pointer;
+}
+
+.stats {
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+    background: #1e6b4a;
+    font-size: 16px;
+}
+
+.game-board {
+    flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-content: center;
+    gap: 8px;
+    padding: 10px;
+    overflow: hidden;
+}
+
+.card {
+    width: 70px;
+    height: 90px;
+    background: #1e6b4a;
+    border-radius: 8px;
+    cursor: pointer;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform 0.4s;
+}
+
+.card.flipped {
+    transform: rotateY(180deg);
+}
+
+.card .front,
+.card .back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    backface-visibility: hidden;
+}
+
+.card .front {
+    background: #2e8b57;
+    color: white;
+    transform: rotateY(180deg);
+}
+
+.card .back {
+    background: #1e6b4a;
+}
+
+.message {
+    text-align: center;
+    padding: 10px;
+    background: #154734;
+    font-size: 16px;
+}
+</style>
+</head>
+<body>
+<div class="header">
+    <h1>НАЙТИ КАРТУ ИГРА</h1>
+</div>
+
+<div class="controls">
+    <select id="device">
+        <option value="mobile">Телефон</option>
+        <option value="desktop">Компьютер</option>
+    </select>
+    <button onclick="startGame()">НОВАЯ ИГРА</button>
+</div>
+
+<div class="stats">
+    <div>Ходы: <span id="moves">0</span></div>
+    <div>Пары: <span id="pairs">0/15</span></div>
+    <div>Ход: <span id="turn">Игрок</span></div>
+</div>
+
+<div class="game-board" id="board"></div>
+
+<div class="message" id="msg">Ваш ход! Кликни на карту</div>
+
+<script>
+let cards = [];
+let flipped = [];
+let pairs = 0;
+let moves = 0;
+let playerTurn = true;
+let gameActive = true;
+
+const symbols = ['🌿','🌸','🌴','🍀','☘️','1','2','3','4','5','A','B','C','D','E'];
+
+function startGame() {
+    cards = [];
+    flipped = [];
+    pairs = 0;
+    moves = 0;
+    playerTurn = true;
+    gameActive = true;
+    
+    document.getElementById('moves').textContent = moves;
+    document.getElementById('pairs').textContent = pairs + '/15';
+    document.getElementById('turn').textContent = 'Игрок';
+    document.getElementById('msg').textContent = 'Ваш ход! Кликни на карту';
+    
+    const board = document.getElementById('board');
+    board.innerHTML = '';
+    
+    let values = [];
+    symbols.forEach(s => {
+        values.push(s);
+        values.push(s);
+    });
+    
+    for (let i = values.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [values[i], values[j]] = [values[j], values[i]];
+    }
+    
+    const isMobile = document.getElementById('device').value === 'mobile';
+    const cols = isMobile ? 5 : 6;
+    
+    board.style.gap = isMobile ? '5px' : '8px';
+    
+    for (let i = 0; i < 30; i++) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        
+        const front = document.createElement('div');
+        front.className = 'front';
+        front.textContent = values[i];
+        
+        const back = document.createElement('div');
+        back.className = 'back';
+        
+        card.appendChild(front);
+        card.appendChild(back);
+        
+        card.onclick = () => handleClick(i);
+        
+        cards.push({
+            el: card,
+            val: values[i],
+            flipped: false,
+            matched: false
+        });
+        
+        board.appendChild(card);
+    }
+}
+
+function handleClick(index) {
+    if (!gameActive || !playerTurn || cards[index].flipped || cards[index].matched) return;
+    if (flipped.length >= 2) return;
+    
+    cards[index].el.classList.add('flipped');
+    cards[index].flipped = true;
+    flipped.push(cards[index]);
+    
+    if (flipped.length === 2) {
+        moves++;
+        document.getElementById('moves').textContent = moves;
+        
+        if (flipped[0].val === flipped[1].val) {
+            flipped[0].matched = true;
+            flipped[1].matched = true;
+            pairs++;
+            document.getElementById('pairs').textContent = pairs + '/15';
+            flipped = [];
+            
+            if (pairs === 15) {
+                gameActive = false;
+                setTimeout(() => alert(`ПОБЕДА! Ходов: ${moves}`), 300);
+                return;
+            }
+            
+            document.getElementById('msg').textContent = 'Правильно! Продолжай';
+        } else {
+            playerTurn = false;
+            document.getElementById('turn').textContent = 'Бот';
+            document.getElementById('msg').textContent = 'Бот думает...';
+            
+            setTimeout(() => {
+                flipped[0].el.classList.remove('flipped');
+                flipped[1].el.classList.remove('flipped');
+                flipped[0].flipped = false;
+                flipped[1].flipped = false;
+                flipped = [];
+                
+                setTimeout(botTurn, 500);
+            }, 1000);
+        }
+    }
+}
+
+function botTurn() {
+    if (!gameActive) return;
+    
+    const available = cards.filter(c => !c.matched && !c.flipped);
+    if (available.length < 2) return;
+    
+    document.getElementById('msg').textContent = 'Бот делает ход...';
+    
+    const index1 = Math.floor(Math.random() * available.length);
+    let index2;
+    do {
+        index2 = Math.floor(Math.random() * available.length);
+    } while (index2 === index1);
+    
+    setTimeout(() => {
+        available[index1].el.classList.add('flipped');
+        available[index1].flipped = true;
+        flipped.push(available[index1]);
+        
+        setTimeout(() => {
+            available[index2].el.classList.add('flipped');
+            available[index2].flipped = true;
+            flipped.push(available[index2]);
+            
+            setTimeout(() => {
+                moves++;
+                document.getElementById('moves').textContent = moves;
+                
+                if (flipped[0].val === flipped[1].val) {
+                    flipped[0].matched = true;
+                    flipped[1].matched = true;
+                    pairs++;
+                    document.getElementById('pairs').textContent = pairs + '/15';
+                    flipped = [];
+                    
+                    if (pairs === 15) {
+                        gameActive = false;
+                        setTimeout(() => alert('Игра окончена!'), 300);
+                        return;
+                    }
+                    
+                    document.getElementById('msg').textContent = 'Бот нашел пару!';
+                    setTimeout(botTurn, 800);
+                } else {
+                    document.getElementById('msg').textContent = 'Бот ошибся. Ваш ход!';
+                    
+                    setTimeout(() => {
+                        flipped[0].el.classList.remove('flipped');
+                        flipped[1].el.classList.remove('flipped');
+                        flipped[0].flipped = false;
+                        flipped[1].flipped = false;
+                        flipped = [];
+                        
+                        playerTurn = true;
+                        document.getElementById('turn').textContent = 'Игрок';
+                        document.getElementById('msg').textContent = 'Ваш ход!';
+                    }, 800);
+                }
+            }, 500);
+        }, 500);
+    }, 500);
+}
+
+startGame();
+</script>
+</body>
+</html>
